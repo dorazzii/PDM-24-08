@@ -1,25 +1,45 @@
+const CACHE_NAME = "agenda-v3";
+
+const SHELL = [
+  "./",
+  "./index.html",
+  "./offline.html",
+  "./style.css",
+  "./app.js",
+  "./manifest.webmanifest",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png"
+];
+
+
 self.addEventListener("install", event => {
-
-    console.log("Service Worker instalado");
-
-});
-
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(SHELL))
+  );
+})
 self.addEventListener("activate", event => {
-
-    console.log("Service Worker ativado");
-
+  event.waitUntil(
+    caches.keys().then(nomes => {
+      return Promise.all(
+        nomes
+          .filter(nome => nome !== CACHE_NAME)
+          .map(nome => caches.delete(nome))
+      );
+    })
+  );
 });
+
 
 self.addEventListener("fetch", event => {
-
-    console.log("Requisição:", event.request.url);
-
-    if (event.request.url.endsWith("/teste-sw")) {
-
-        event.respondWith(
-            new Response("Resposta criada pelo Service Worker!")
-        );
-
-    }
-
+  event.respondWith(
+    caches.match(event.request)
+      .then(resposta => resposta || fetch(event.request))
+      .catch(() => {
+        if (event.request.mode === "navigate") {
+          return caches.match("./offline.html");
+        }
+        return Response.error();
+      })
+  );
 });
